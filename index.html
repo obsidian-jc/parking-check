@@ -393,7 +393,20 @@ function saveMemo(fl,n){
   if(!state.stepMemos[fl])state.stepMemos[fl]={};
   if(!state.stepMemos[fl][n])state.stepMemos[fl][n]={};
   if(txt)state.stepMemos[fl][n][today()]=txt;else delete state.stepMemos[fl][n][today()];
-  saveState();showToast('메모 저장됨 ✓');
+  saveState();
+  // 카드 헤더 dot 즉시 갱신 (re-render 없이)
+  const card=document.getElementById('card-'+fl+'-'+n);
+  if(card){
+    const hasMemo=Object.keys(state.stepMemos[fl][n]).filter(function(k){return k!=='__photos__';}).length>0;
+    const dots=card.querySelectorAll('.memo-dot');
+    if(hasMemo&&dots.length===0){
+      const dot=document.createElement('div');dot.className='memo-dot';
+      const btn=card.querySelector('.check-btn');if(btn)btn.before(dot);
+    } else if(!hasMemo&&dots.length>0){
+      dots.forEach(function(d){d.remove();});
+    }
+  }
+  showToast('메모 저장됨 ✓');
 }
 function doReset(){
   showConfirm(floorName(floor)+' 체크를 모두 초기화할까요?',true).then(function(ok){
@@ -415,7 +428,23 @@ function onStepPhoto(e,fl,n){
 function renderStepPhotos(fl,n){
   const el=document.getElementById('pl-'+fl+'-'+n);if(!el)return;
   const photos=(state.stepMemos[fl]&&state.stepMemos[fl][n]&&state.stepMemos[fl][n]['__photos__'])||[];
-  el.innerHTML=photos.slice(-6).map(function(p){return '<img class="photo-thumb" src="'+p.data+'" onclick="viewPhoto(\''+p.data+'\')">';}).join('');
+  const base=photos.length>6?photos.length-6:0;
+  el.innerHTML=photos.slice(-6).map(function(p,i){
+    const ri=base+i;
+    return '<div style="position:relative;display:inline-block;margin:0 4px 4px 0">'+
+      '<img class="photo-thumb" src="'+p.data+'" onclick="viewPhoto(this.src)" style="display:block">'+
+      '<button onclick="deleteStepPhoto(\''+fl+'\','+n+','+ri+')" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:15px;font-weight:700;cursor:pointer;line-height:1;padding:0">&times;</button>'+
+    '</div>';
+  }).join('');
+}
+function deleteStepPhoto(fl,n,idx){
+  showConfirm('사진을 삭제할까요?',true).then(function(ok){
+    if(!ok)return;
+    var arr=state.stepMemos[fl]&&state.stepMemos[fl][n]&&state.stepMemos[fl][n]['__photos__'];
+    if(!arr)return;
+    arr.splice(idx,1);
+    saveState();renderStepPhotos(fl,n);showToast('사진 삭제됨');
+  });
 }
 function openIssueSheet(){
   document.getElementById('is-floor').value=floor;
