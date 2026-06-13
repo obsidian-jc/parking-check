@@ -533,11 +533,25 @@ function onStepPhoto(e,fl,n){
   e.target.value='';
 }
 function renderStepPhotos(fl,n){
-  const el=document.getElementById(`photos-${fl}-${n}`); if(!el) return;
+  const el=document.getElementById('photos-'+fl+'-'+n); if(!el) return;
   const photos=(state.stepMemos[fl]&&state.stepMemos[fl][n]&&state.stepMemos[fl][n]['__photos__'])||[];
-  el.innerHTML=photos.slice(-6).map((p,i)=>
-    `<img class="photo-thumb" src="${p.data}" onclick="viewPhoto('${p.data}')">`
-  ).join('');
+  const base=photos.length>6?photos.length-6:0;
+  el.innerHTML=photos.slice(-6).map(function(p,i){
+    var ri=base+i;
+    return '<div style="position:relative;display:inline-block;margin:0 6px 6px 0">'+
+      '<img class="photo-thumb" src="'+p.data+'" onclick="viewPhoto(\''+p.data+'\')">'+
+      '<button onclick="deleteStepPhoto(\''+fl+'\','+n+','+ri+')" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:none;background:#dc2626;color:#fff;font-size:15px;font-weight:700;cursor:pointer;line-height:1;padding:0;z-index:10">&times;</button>'+
+    '</div>';
+  }).join('');
+}
+function deleteStepPhoto(fl,n,idx){
+  showConfirm('사진을 삭제할까요?',true).then(function(ok){
+    if(!ok) return;
+    var arr=state.stepMemos[fl]&&state.stepMemos[fl][n]&&state.stepMemos[fl][n]['__photos__'];
+    if(!arr) return;
+    arr.splice(idx,1);
+    saveState(); renderStepPhotos(fl,n); showToast('사진 삭제됨');
+  });
 }
 
 // ═══════════════════════════════════════
