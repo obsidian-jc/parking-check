@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#1a56db">
+  <meta name="apple-mobile-web-app-title" content="지하점검">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>지하주차장 점검</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f0f2f5;--card:#fff;--primary:#1a56db;--primary-light:#e8f0fe;
+  --green:#16a34a;--green-bg:#dcfce7;--red:#dc2626;--red-bg:#fee2e2;
+  --orange:#d97706;--orange-bg:#fef3c7;--text:#111;--sub:#666;
+  --border:#e5e7eb;--radius:14px;--shadow:0 2px 8px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── 헤더 ── */
+#hdr{position:sticky;top:0;z-index:100;background:var(--primary);color:#fff;padding:12px 16px 0;
+  box-shadow:0 2px 8px rgba(0,0,0,.2)}
+#hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+#hdr-title{font-size:16px;font-weight:700}
+#hdr-meta{font-size:11px;opacity:.8;text-align:right;line-height:1.5}
+#floor-tabs{display:flex;gap:4px}
+.floor-tab{flex:1;padding:8px 0;border:none;background:rgba(255,255,255,.18);color:#fff;
+  font-size:14px;font-weight:600;border-radius:10px 10px 0 0;cursor:pointer;transition:.15s}
+.floor-tab.active{background:#fff;color:var(--primary)}
+
+/* ── 서브헤더 (진행률) ── */
+#sub-hdr{background:#fff;padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;position:sticky;top:88px;z-index:99}
+#prog-wrap{flex:1}
+#prog-label{font-size:11px;color:var(--sub);margin-bottom:3px;display:flex;justify-content:space-between}
+#prog-bar{height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+#prog-fill{height:100%;background:var(--green);border-radius:99px;transition:.3s}
+#reset-btn{font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--sub);cursor:pointer;white-space:nowrap}
+
+/* ── 탭 바 ── */
+#tabbar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:#fff;
+  border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.tab-btn{flex:1;border:none;background:none;padding:8px 0 5px;cursor:pointer;
+  font-size:10px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px;transition:.15s}
+.tab-btn .ico{font-size:22px;line-height:1}
+.tab-btn.active{color:var(--primary);font-weight:600}
+#issue-badge{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);color:#fff;
+  font-size:9px;border-radius:99px;padding:1px 5px;display:none}
+
+/* ── 메인 콘텐츠 ── */
+#main{padding:12px 12px 90px}
+
+/* ── 시설 카드 ── */
+.fac-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:10px;overflow:hidden;transition:.2s}
+.fac-card.done{border-left:4px solid var(--green)}
+.fac-card.has-issue{border-left:4px solid var(--red)}
+.fac-hdr{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer}
+.fac-num{min-width:34px;height:34px;border-radius:50%;background:var(--primary-light);
+  color:var(--primary);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.fac-card.done .fac-num{background:var(--green-bg);color:var(--green)}
+.fac-info{flex:1;min-width:0}
+.fac-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fac-loc{font-size:11px;color:var(--sub);margin-top:2px}
+.fac-memo-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;display:none}
+.fac-check-btn{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);
+  background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fac-card.done .fac-check-btn{background:var(--green);border-color:var(--green);color:#fff}
+
+/* ── 카드 바디 (펼침) ── */
+.fac-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border)}
+.fac-card.open .fac-body{display:block}
+.memo-area{width:100%;min-height:72px;border:1px solid var(--border);border-radius:10px;
+  padding:10px;font-size:14px;font-family:inherit;resize:none;margin-top:10px;color:var(--text)}
+.memo-area:focus{outline:none;border-color:var(--primary)}
+.fac-actions{display:flex;gap:8px;margin-top:8px}
+.act-btn{flex:1;padding:9px 0;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer}
+.act-save{background:var(--primary);color:#fff}
+.act-photo{background:var(--orange-bg);color:var(--orange)}
+.photo-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.photo-thumb{width:68px;height:68px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border)}
+.memo-hist{margin-top:8px;background:var(--bg);border-radius:10px;padding:8px 10px}
+.memo-hist-title{font-size:10px;color:var(--sub);margin-bottom:4px}
+.memo-hist-item{font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:6px}
+.memo-hist-item:last-child{border-bottom:none}
+.memo-hist-date{color:var(--sub);font-size:10px;white-space:nowrap}
+
+/* ── 이상마킹 패널 ── */
+#issue-panel{display:none}
+.issue-add-btn{width:100%;padding:14px;border-radius:var(--radius);border:2px dashed var(--red);
+  background:var(--red-bg);color:var(--red);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px}
+.issue-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:10px;padding:14px;border-left:4px solid var(--orange)}
+.issue-card.urgent{border-left-color:var(--red)}
+.issue-hdr2{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.issue-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}
+.issue-tag.urgent{background:var(--red-bg);color:var(--red)}
+.issue-tag.warn{background:var(--orange-bg);color:var(--orange)}
+.issue-fac{font-size:14px;font-weight:600}
+.issue-date{font-size:11px;color:var(--sub);margin-bottom:4px}
+.issue-memo-txt{font-size:13px;color:#333}
+.issue-photo-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;margin-top:6px;cursor:pointer}
+.del-btn{font-size:11px;color:var(--sub);background:none;border:1px solid var(--border);
+  border-radius:6px;padding:3px 8px;cursor:pointer;margin-top:6px}
+
+/* ── 보고서 패널 ── */
+#report-panel{display:none}
+.rpt-ctrl{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.rpt-ctrl input[type=date]{flex:1;padding:8px 10px;border:1px solid var(--border);
+  border-radius:10px;font-size:14px;font-family:inherit}
+.rpt-btn{padding:8px 12px;border-radius:10px;border:none;background:var(--primary);
+  color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.rpt-summary-card{background:var(--primary);color:#fff;border-radius:var(--radius);
+  padding:16px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center}
+.rpt-stat{display:flex;flex-direction:column;gap:2px}
+.rpt-stat-val{font-size:22px;font-weight:700}
+.rpt-stat-lbl{font-size:10px;opacity:.8}
+.rpt-section{margin-bottom:12px}
+.rpt-section-title{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:.5px}
+.rpt-row{background:var(--card);border-radius:10px;padding:12px;margin-bottom:6px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.rpt-row-name{font-size:13px;font-weight:600}
+.rpt-row-floor{font-size:10px;color:var(--sub)}
+.rpt-row-memo{font-size:13px;color:#333;margin-top:4px}
+.rpt-empty{text-align:center;color:var(--sub);font-size:13px;padding:32px 0}
+
+/* ── 달력 패널 ── */
+#cal-panel{display:none}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;
+  background:var(--card);border-radius:var(--radius);padding:12px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.cal-nav-btn{width:36px;height:36px;border:none;background:var(--bg);border-radius:50%;
+  font-size:18px;cursor:pointer}
+.cal-month{font-size:16px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px}
+.cal-dow{text-align:center;font-size:11px;color:var(--sub);padding:4px 0;font-weight:600}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;font-size:14px;cursor:pointer;background:var(--card);transition:.15s}
+.cal-day:active{opacity:.7}
+.cal-day.empty{background:transparent;cursor:default}
+.cal-day.today{font-weight:700;box-shadow:0 0 0 2px var(--primary)}
+.cal-day.has-memo{background:var(--green-bg);color:var(--green);font-weight:700}
+.cal-day.has-issue{background:var(--red-bg);color:var(--red);font-weight:700}
+.cal-day.has-both{background:linear-gradient(135deg,var(--red-bg) 50%,var(--green-bg) 50%);font-weight:700}
+.cal-legend{display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--sub)}
+.cal-leg{display:flex;align-items:center;gap:4px}
+.cal-dot{width:12px;height:12px;border-radius:4px}
+
+/* ── 데이터 패널 ── */
+#data-panel{display:none;padding-top:4px}
+.data-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.data-card-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.data-card-desc{font-size:12px;color:var(--sub);margin-bottom:12px;line-height:1.5}
+.data-btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px}
+.data-btn.export{background:var(--primary);color:#fff}
+.data-btn.import{background:var(--green-bg);color:var(--green)}
+.storage-info{font-size:11px;color:var(--sub);text-align:center;padding:8px}
+
+/* ── 팝업 ── */
+.popup-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end}
+.popup-bg.show{display:flex}
+.popup-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom)+20px);
+  width:100%;max-height:85vh;overflow-y:auto}
+.popup-handle{width:40px;height:4px;background:#ddd;border-radius:99px;margin:0 auto 16px}
+.popup-title{font-size:16px;font-weight:700;margin-bottom:14px}
+.popup-field{margin-bottom:12px}
+.popup-field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;font-weight:600}
+.popup-field input,.popup-field select,.popup-field textarea{width:100%;padding:11px 12px;
+  border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit}
+.popup-field textarea{min-height:80px;resize:none}
+.popup-actions{display:flex;gap:8px;margin-top:16px}
+.popup-btn{flex:1;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer}
+.popup-btn.cancel{background:var(--bg);color:var(--sub)}
+.popup-btn.confirm{background:var(--primary);color:#fff}
+.popup-btn.danger{background:var(--red);color:#fff}
+
+/* 사진 뷰어 */
+#photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;display:none;
+  align-items:center;justify-content:center}
+#photo-viewer.show{display:flex}
+#photo-viewer img{max-width:100%;max-height:90vh;border-radius:8px}
+#photo-viewer-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.2);
+  border:none;color:#fff;font-size:28px;width:44px;height:44px;border-radius:50%;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div id="hdr">
+  <div id="hdr-top">
+    <div id="hdr-title">🏢 래미안 원베일리 지하주차장</div>
+    <div id="hdr-meta">
+      <div id="hdr-date"></div>
+      <div id="hdr-storage" style="color:rgba(255,255,255,.7)"></div>
+    </div>
+  </div>
+  <div id="floor-tabs">
+    <button class="floor-tab active" id="btn-B4" onclick="setFloor('B4')">지하 4층</button>
+    <button class="floor-tab" id="btn-B3" onclick="setFloor('B3')">지하 3층</button>
+    <button class="floor-tab" id="btn-B2" onclick="setFloor('B2')">지하 2층</button>
+  </div>
+</div>
+
+<!-- 서브헤더 (순찰탭 전용) -->
+<div id="sub-hdr">
+  <div id="prog-wrap">
+    <div id="prog-label"><span id="prog-text">0/0 완료</span><span id="prog-pct">0%</span></div>
+    <div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <button id="reset-btn" onclick="doReset()">초기화</button>
+</div>
+
+<!-- 메인 -->
+<div id="main">
+  <!-- 순찰 패널 -->
+  <div id="route-panel"></div>
+
+  <!-- 이상마킹 패널 -->
+  <div id="issue-panel">
+    <button class="issue-add-btn" onclick="openIssuePopup()">＋ 이상 사항 등록</button>
+    <div id="issue-list"></div>
+  </div>
+
+  <!-- 보고서 패널 -->
+  <div id="report-panel">
+    <div class="rpt-ctrl">
+      <input type="date" id="rpt-date" onchange="buildReport()">
+      <button class="rpt-btn" onclick="printReport()">🖨</button>
+      <button class="rpt-btn" onclick="copyReport()" style="background:var(--green)">📋</button>
+    </div>
+    <div id="rpt-body"></div>
+  </div>
+
+  <!-- 달력 패널 -->
+  <div id="cal-panel">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button class="cal-nav-btn" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <div class="cal-leg"><div class="cal-dot" style="background:var(--green-bg);border:1px solid var(--green)"></div>메모 있음</div>
+      <div class="cal-leg"><div class="cal-dot" style="background:var(--red-bg);border:1px solid var(--red)"></div>이상 있음</div>
+    </div>
+  </div>
+
+  <!-- 데이터 패널 -->
+  <div id="data-panel">
+    <div class="data-card">
+      <div class="data-card-title">💾 데이터 내보내기</div>
+      <div class="data-card-desc">메모·이상기록·사진을 JSON 파일로 저장합니다.<br>iCloud Drive / Google Drive에 보관하세요.</div>
+      <button class="data-btn export" onclick="exportData()">📤 JSON 파일 내보내기</button>
+    </div>
+    <div class="data-card">
+      <div class="data-card-title">📂 데이터 불러오기</div>
+      <div class="data-card-desc">저장해둔 JSON 파일을 불러옵니다.<br>기존 데이터와 병합됩니다.</div>
+      <button class="data-btn import" onclick="document.getElementById('import-input').click()">📥 JSON 파일 불러오기</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div class="storage-info" id="storage-info"></div>
+  </div>
+</div>
+
+<!-- 탭바 -->
+<div id="tabbar">
+  <button class="tab-btn active" id="stab-route" onclick="setTab('route')">
+    <span class="ico">🚶</span>순찰
+  </button>
+  <button class="tab-btn" id="stab-issue" onclick="setTab('issue')" style="position:relative">
+    <span class="ico">⚠️</span>이상
+    <div id="issue-badge"></div>
+  </button>
+  <button class="tab-btn" id="stab-report" onclick="setTab('report')">
+    <span class="ico">📋</span>보고서
+  </button>
+  <button class="tab-btn" id="stab-cal" onclick="setTab('cal')">
+    <span class="ico">📅</span>달력
+  </button>
+  <button class="tab-btn" id="stab-data" onclick="setTab('data')">
+    <span class="ico">🗂</span>데이터
+  </button>
+</div>
+
+<!-- 이상 등록 팝업 -->
+<div class="popup-bg" id="issue-popup">
+  <div class="popup-sheet">
+    <div class="popup-handle"></div>
+    <div class="popup-title">⚠️ 이상 사항 등록</div>
+    <div class="popup-field">
+      <label>층</label>
+      <select id="ip-floor">
+        <option value="B4">지하 4층</option>
+        <option value="B3">지하 3층</option>
+        <option value="B2">지하 2층</option>
+      </select>
+    </div>
+    <div class="popup-field">
+      <label>시설명</label>
+      <input type="text" id="ip-facility" placeholder="예: 지열펌프실 #1">
+    </div>
+    <div class="popup-field">
+      <label>등급</label>
+      <select id="ip-level">
+        <option value="warn">🟡 주의</option>
+        <option value="urgent">🔴 긴급</option>
+      </select>
+    </div>
+    <div class="popup-field">
+      <label>이상 내용</label>
+      <textarea id="ip-memo" placeholder="이상 내용을 입력하세요"></textarea>
+    </div>
+    <div class="popup-field">
+      <label>사진 첨부</label>
+      <button type="button" onclick="document.getElementById('ip-photo-input').click()"
+        style="width:100%;padding:11px;border:1.5px dashed var(--border);border-radius:10px;
+        background:var(--bg);font-size:14px;cursor:pointer;color:var(--sub)">📷 사진 선택</button>
+      <input type="file" id="ip-photo-input" accept="image/*" style="display:none" onchange="onIssuePhoto(event)">
+      <div id="ip-photo-preview" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="popup-actions">
+      <button class="popup-btn cancel" onclick="closeIssuePopup()">취소</button>
+      <button class="popup-btn confirm" onclick="saveIssue()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 사진 뷰어 -->
+<div id="photo-viewer" onclick="this.classList.remove('show')">
+  <button id="photo-viewer-close" onclick="document.getElementById('photo-viewer').classList.remove('show')">✕</button>
+  <img id="photo-viewer-img" src="">
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// 시설 데이터
+// ═══════════════════════════════════════
+const ROUTES = {
+  B4:[
+    {n:1, name:'펌프실#1 · 저수조#1',   loc:'123동 인근'},
+    {n:2, name:'지열펌프실 #1',          loc:'123동 위'},
+    {n:3, name:'지열펌프실 #2',          loc:'102동 인근'},
+    {n:4, name:'지열펌프실 #3',          loc:'119동 인근'},
+    {n:5, name:'수영장펌프실 #1·#2',     loc:'106동 인근'},
+    {n:6, name:'지열펌프실 #5',          loc:'106동 하단'},
+    {n:7, name:'지열펌프실 #6',          loc:'115동 인근'},
+    {n:8, name:'펌프실#2 · 저수조#2',    loc:'114동 인근'},
+    {n:9, name:'지열펌프실 #4',          loc:'112동 인근 ★'},
+  ],
+  B3:[
+    {n:1, name:'빗물저수조#6 펌프실',    loc:'113동 우측'},
+    {n:2, name:'빗물저수조#5 펌프실',    loc:'109동 인근'},
+    {n:3, name:'정화조 관리층 #2',       loc:'110동 인근'},
+    {n:4, name:'빗물저수조#4 펌프실',    loc:'117동 인근'},
+    {n:5, name:'정화조 관리층 #3',       loc:'118동 인근'},
+    {n:6, name:'빗물저수조#3 펌프실',    loc:'106동 인근'},
+    {n:7, name:'정화조 관리층 #1',       loc:'107동 인근'},
+    {n:8, name:'빗물저수조#2 펌프실',    loc:'104동 인근'},
+    {n:9, name:'빗물저수조#1 펌프실',    loc:'105동 인근 ★'},
+  ],
+  B2:[
+    {n:1, name:'열교환실 #1',            loc:'123동 인근'},
+    {n:2, name:'연료전지실',             loc:'120동 위'},
+    {n:3, name:'열교환실 #3',            loc:'114동 인근'},
+    {n:4, name:'전기실#1 · 발전기실#1',  loc:'112동 인근'},
+    {n:5, name:'공조실 #1',              loc:'106동 인근'},
+    {n:6, name:'열교환실 #2',            loc:'106동 인근'},
+    {n:7, name:'전기실#2 · 발전기실#2',  loc:'107동 인근'},
+  ],
+};
+
+// ═══════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════
+const STORE_KEY = 'raemian_mobile_v1';
+let state = { checked:{}, stepMemos:{}, issues:[] };
+let floor = 'B4', curTab = 'route';
+let calYear, calMonth;
+let pendingPhotos = []; // 이상등록용 사진 배열
+
+function loadState(){
+  try{ const r=localStorage.getItem(STORE_KEY); if(r) Object.assign(state,JSON.parse(r)); }catch(e){}
+}
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    updateStorageInfo();
+  }catch(e){ alert('저장 공간 부족. 오래된 데이터를 내보내고 정리해 주세요.'); }
+}
+function updateStorageInfo(){
+  try{
+    const b=new Blob([localStorage.getItem(STORE_KEY)||'']).size;
+    document.getElementById('storage-info').textContent=
+      `현재 저장 용량: ${b<1024*1024?(b/1024).toFixed(1)+'KB':(b/1024/1024).toFixed(2)+'MB'}`;
+    document.getElementById('hdr-storage').textContent=
+      `💾 ${b<1024*1024?(b/1024).toFixed(0)+'KB':(b/1024/1024).toFixed(1)+'MB'}`;
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════
+// 시계
+// ═══════════════════════════════════════
+function tick(){
+  const now=new Date();
+  document.getElementById('hdr-date').textContent=
+    now.toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'})+' '+
+    now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tick,15000); tick();
+function today(){ return new Date().toISOString().slice(0,10); }
+function floorName(f){ return f==='B2'?'지하2층':f==='B3'?'지하3층':'지하4층'; }
+
+// ═══════════════════════════════════════
+// 탭 / 층
+// ═══════════════════════════════════════
+function setFloor(f){
+  floor=f;
+  ['B2','B3','B4'].forEach(x=>document.getElementById('btn-'+x).classList.toggle('active',x===f));
+  if(curTab==='route') renderRoute();
+}
+function setTab(tab){
+  curTab=tab;
+  ['route','issue','report','cal','data'].forEach(t=>{
+    document.getElementById('stab-'+t).classList.toggle('active',t===tab);
+    const panel=document.getElementById(t==='route'?'route-panel':t+'-panel');
+    if(panel) panel.style.display=t===tab?'block':'none';
+  });
+  document.getElementById('sub-hdr').style.display=tab==='route'?'flex':'none';
+  if(tab==='route') renderRoute();
+  else if(tab==='issue') renderIssueList();
+  else if(tab==='report'){ document.getElementById('rpt-date').value=today(); buildReport(); }
+  else if(tab==='cal') renderCalendar();
+  else if(tab==='data') updateStorageInfo();
+}
+
+// ═══════════════════════════════════════
+// 순찰 렌더링
+// ═══════════════════════════════════════
+function renderRoute(){
+  const steps=ROUTES[floor];
+  const checked=state.checked[floor]||{};
+  const done=steps.filter(s=>checked[s.n]).length;
+  const pct=steps.length?Math.round(done/steps.length*100):0;
+  document.getElementById('prog-text').textContent=`${done}/${steps.length} 완료`;
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-fill').style.width=pct+'%';
+
+  const td=today();
+  let html='';
+  steps.forEach(s=>{
+    const isDone=!!checked[s.n];
+    const memos=state.stepMemos[floor]&&state.stepMemos[floor][s.n]||{};
+    const todayMemo=memos[td]||'';
+    const hasMemo=Object.keys(memos).length>0;
+    const histDates=Object.entries(memos).filter(([d])=>d!==td).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3);
+
+    html+=`<div class="fac-card${isDone?' done':''}" id="card-${floor}-${s.n}">
+      <div class="fac-hdr" onclick="toggleCard('${floor}',${s.n})">
+        <div class="fac-num">${isDone?'✓':s.n}</div>
+        <div class="fac-info">
+          <div class="fac-name">${s.name}</div>
+          <div class="fac-loc">${s.loc}</div>
+        </div>
+        <div class="fac-memo-dot" id="dot-${floor}-${s.n}" style="display:${hasMemo?'block':'none'}"></div>
+        <button class="fac-check-btn" onclick="event.stopPropagation();toggleCheck('${floor}',${s.n})">
+          ${isDone?'✓':'○'}
+        </button>
+      </div>
+      <div class="fac-body">
+        <textarea class="memo-area" id="memo-${floor}-${s.n}" placeholder="오늘 메모를 입력하세요…">${todayMemo}</textarea>
+        <div class="fac-actions">
+          <button class="act-btn act-save" onclick="saveMemo('${floor}',${s.n})">💾 메모 저장</button>
+          <button class="act-btn act-photo" onclick="document.getElementById('photo-${floor}-${s.n}').click()">📷 사진</button>
+          <input type="file" id="photo-${floor}-${s.n}" accept="image/*" style="display:none" onchange="onStepPhoto(event,'${floor}',${s.n})">
+        </div>
+        <div class="photo-list" id="photos-${floor}-${s.n}"></div>
+        ${histDates.length?`<div class="memo-hist">
+          <div class="memo-hist-title">이전 메모</div>
+          ${histDates.map(([d,m])=>`<div class="memo-hist-item"><span class="memo-hist-date">${d}</span><span>${m.length>40?m.slice(0,40)+'…':m}</span></div>`).join('')}
+        </div>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('route-panel').innerHTML=html;
+  // 사진 렌더
+  steps.forEach(s=>renderStepPhotos(floor,s.n));
+}
+
+function toggleCard(fl,n){
+  const el=document.getElementById(`card-${fl}-${n}`);
+  el.classList.toggle('open');
+}
+function toggleCheck(fl,n){
+  if(!state.checked[fl]) state.checked[fl]={};
+  state.checked[fl][n]=!state.checked[fl][n];
+  saveState(); renderRoute();
+}
+function saveMemo(fl,n){
+  const txt=document.getElementById(`memo-${fl}-${n}`)?.value.trim()||'';
+  if(!state.stepMemos[fl]) state.stepMemos[fl]={};
+  if(!state.stepMemos[fl][n]) state.stepMemos[fl][n]={};
+  if(txt) state.stepMemos[fl][n][today()]=txt;
+  else delete state.stepMemos[fl][n][today()];
+  saveState();
+  const dot=document.getElementById(`dot-${fl}-${n}`);
+  if(dot) dot.style.display=Object.keys(state.stepMemos[fl]&&state.stepMemos[fl][n]||{}).length?'block':'none';
+  showToast('메모 저장됨 ✓');
+}
+function doReset(){
+  showConfirm(floorName(floor)+' 체크 및 오늘 사진을 모두 초기화할까요?', true).then(function(ok){
+    if(!ok) return;
+    state.checked[floor]={};
+    // 해당 층 stepMemos의 __photos__ 도 초기화
+    if(state.stepMemos[floor]){
+      Object.keys(state.stepMemos[floor]).forEach(function(n){
+        if(state.stepMemos[floor][n]&&state.stepMemos[floor][n]['__photos__']){
+          delete state.stepMemos[floor][n]['__photos__'];
+        }
+      });
+    }
+    saveState(); renderRoute(); showToast('초기화 완료');
+  });
+}
+
+// ═══════════════════════════════════════
+// 시설별 사진
+// ═══════════════════════════════════════
+function onStepPhoto(e,fl,n){
+  const file=e.target.files[0]; if(!file) return;
+  compressPhoto(file, b64=>{
+    if(!state.stepMemos[fl]) state.stepMemos[fl]={};
+    if(!state.stepMemos[fl][n]) state.stepMemos[fl][n]={};
+    const key='__photos__';
+    if(!state.stepMemos[fl][n][key]) state.stepMemos[fl][n][key]=[];
+    state.stepMemos[fl][n][key].push({date:today(), data:b64});
+    saveState(); renderStepPhotos(fl,n);
+  });
+  e.target.value='';
+}
+function renderStepPhotos(fl,n){
+  const el=document.getElementById('photos-'+fl+'-'+n); if(!el) return;
+  const photos=(state.stepMemos[fl]&&state.stepMemos[fl][n]&&state.stepMemos[fl][n]['__photos__'])||[];
+  const start=photos.length>6?photos.length-6:0;
+  el.innerHTML=photos.slice(-6).map(function(p,i){
+    var realIdx=start+i;
+    return '<div style="position:relative;display:inline-block;margin:8px 6px 6px 0">'+
+      '<img class="photo-thumb" src="'+p.data+'" onclick="viewPhoto(\''+p.data+'\')" style="display:block">'+
+      '<button onclick="deleteStepPhoto(\''+fl+'\',\''+n+'\','+realIdx+')" '+
+        'style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;'+
+        'background:rgba(220,38,38,0.95);color:#fff;font-size:14px;font-weight:700;cursor:pointer;'+
+        'line-height:22px;padding:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.3)">&times;</button>'+
+    '</div>';
+  }).join('');
+}
+function deleteStepPhoto(fl,n,idx){
+  showConfirm('사진을 삭제할까요?',true).then(function(ok){
+    if(!ok) return;
+    var key=isNaN(n)?n:+n;
+    var arr=state.stepMemos[fl]&&state.stepMemos[fl][key]&&state.stepMemos[fl][key]['__photos__'];
+    if(!arr) return;
+    arr.splice(idx,1);
+    saveState(); renderStepPhotos(fl,key); showToast('사진 삭제됨');
+  });
+}
+
+// ═══════════════════════════════════════
+// 이상마킹
+// ═══════════════════════════════════════
+let pendingIssuePhotos=[];
+function openIssuePopup(){
+  document.getElementById('ip-floor').value=floor;
+  document.getElementById('ip-facility').value='';
+  document.getElementById('ip-memo').value='';
+  document.getElementById('ip-photo-preview').innerHTML='';
+  pendingIssuePhotos=[];
+  document.getElementById('issue-popup').classList.add('show');
+}
+function closeIssuePopup(){ document.getElementById('issue-popup').classList.remove('show'); }
+function onIssuePhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  compressPhoto(file, b64=>{
+    pendingIssuePhotos.push(b64);
+    renderIssuePhotoPreview();
+  });
+  e.target.value='';
+}
+function renderIssuePhotoPreview(){
+  const prev=document.getElementById('ip-photo-preview');
+  prev.innerHTML=pendingIssuePhotos.map(function(b64,i){
+    return '<div style="position:relative;display:inline-block;margin:8px 6px 0 0">'+
+      '<img class="photo-thumb" src="'+b64+'" onclick="viewPhoto(\''+b64+'\')">'+
+      '<button onclick="deletePendingPhoto('+i+')" '+
+        'style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;'+
+        'background:rgba(220,38,38,0.95);color:#fff;font-size:14px;font-weight:700;cursor:pointer;'+
+        'line-height:22px;padding:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.3)">&times;</button>'+
+    '</div>';
+  }).join('');
+}
+function deletePendingPhoto(idx){
+  pendingIssuePhotos.splice(idx,1);
+  renderIssuePhotoPreview();
+}
+function saveIssue(){
+  const memo=document.getElementById('ip-memo').value.trim();
+  if(!memo){ alert('이상 내용을 입력하세요.'); return; }
+  const now=new Date();
+  state.issues.push({
+    id:Date.now(),
+    floor:document.getElementById('ip-floor').value,
+    facility:document.getElementById('ip-facility').value.trim()||'위치 미지정',
+    level:document.getElementById('ip-level').value,
+    memo, photos:[...pendingIssuePhotos],
+    time:now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    date:now.toISOString().slice(0,10),
+  });
+  saveState(); closeIssuePopup(); renderIssueList(); updateIssueBadge();
+}
+function deleteIssue(id){ showConfirm('이상 사항을 삭제할까요?',true).then(function(ok){if(!ok)return; state.issues=state.issues.filter(function(i){return i.id!==id;}); saveState(); renderIssueList(); updateIssueBadge();}); return; saveState(); renderIssueList(); updateIssueBadge(); }
+function renderIssueList(){
+  const list=[...state.issues].reverse();
+  const el=document.getElementById('issue-list');
+  if(!list.length){ el.innerHTML=`<div class="rpt-empty">이상 사항이 없습니다.<br><small style="color:var(--sub)">위의 버튼으로 이상을 등록하세요.</small></div>`; return; }
+  el.innerHTML=list.map(i=>`
+    <div class="issue-card ${i.level}">
+      <div class="issue-hdr2">
+        <span class="issue-tag ${i.level}">${i.level==='urgent'?'🔴 긴급':'🟡 주의'}</span>
+        <span style="font-size:11px;color:var(--sub)">${floorName(i.floor)}</span>
+      </div>
+      <div class="issue-fac">${i.facility}</div>
+      <div class="issue-date">${i.date} ${i.time}</div>
+      <div class="issue-memo-txt">${i.memo}</div>
+      ${(i.photos||[]).map(p=>`<img class="issue-photo-thumb" src="${p}" onclick="viewPhoto('${p}')">`).join('')}
+      <br><button class="del-btn" onclick="deleteIssue(${i.id})">🗑 삭제</button>
+    </div>`).join('');
+}
+function updateIssueBadge(){
+  const b=document.getElementById('issue-badge');
+  const cnt=state.issues.length;
+  b.textContent=cnt; b.style.display=cnt?'block':'none';
+}
+
+// ═══════════════════════════════════════
+// 보고서
+// ═══════════════════════════════════════
+function buildReport(){
+  const sel=document.getElementById('rpt-date')?.value||today();
+  const memos=[]; const issList=state.issues.filter(i=>i.date===sel);
+  Object.entries(ROUTES).forEach(([fl,steps])=>{
+    steps.forEach(s=>{
+      const txt=state.stepMemos[fl]&&state.stepMemos[fl][s.n]&&state.stepMemos[fl][s.n][sel];
+      if(txt) memos.push({floor:fl,name:s.name,memo:txt});
+    });
+  });
+  const totalSteps=Object.values(ROUTES).reduce((a,b)=>a+b.length,0);
+  const totalDone=Object.values(state.checked).reduce((a,o)=>a+Object.values(o).filter(Boolean).length,0);
+
+  let html=`<div class="rpt-summary-card">
+    <div class="rpt-stat"><div class="rpt-stat-val">${totalDone}</div><div class="rpt-stat-lbl">완료 / ${totalSteps}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-val">${memos.length}</div><div class="rpt-stat-lbl">메모</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-val">${issList.length}</div><div class="rpt-stat-lbl">이상</div></div>
+  </div>`;
+  if(memos.length){
+    html+=`<div class="rpt-section"><div class="rpt-section-title">📝 시설별 메모</div>`;
+    memos.forEach(m=>{ html+=`<div class="rpt-row"><div style="display:flex;justify-content:space-between"><span class="rpt-row-name">${m.name}</span><span class="rpt-row-floor">${floorName(m.floor)}</span></div><div class="rpt-row-memo">${m.memo}</div></div>`; });
+    html+='</div>';
+  }
+  if(issList.length){
+    html+=`<div class="rpt-section"><div class="rpt-section-title">⚠️ 이상 마킹</div>`;
+    issList.forEach(i=>{ html+=`<div class="rpt-row" style="border-left:3px solid ${i.level==='urgent'?'var(--red)':'var(--orange)'}"><div style="display:flex;justify-content:space-between"><span class="rpt-row-name">${i.level==='urgent'?'🔴':'🟡'} ${i.facility}</span><span class="rpt-row-floor">${floorName(i.floor)}</span></div><div style="font-size:11px;color:var(--sub)">${i.time}</div><div class="rpt-row-memo">${i.memo}</div></div>`; });
+    html+='</div>';
+  }
+  if(!memos.length&&!issList.length) html+=`<div class="rpt-empty">해당 날짜의 기록이 없습니다.</div>`;
+  document.getElementById('rpt-body').innerHTML=html;
+}
+function printReport(){
+  const sel=document.getElementById('rpt-date')?.value||today();
+  let txt=`래미안 원베일리 지하주차장 점검보고서\n일자: ${sel}\n\n`;
+  Object.entries(ROUTES).forEach(([fl,steps])=>{ steps.forEach(s=>{ const m=state.stepMemos[fl]&&state.stepMemos[fl][s.n]&&state.stepMemos[fl][s.n][sel]; if(m&&s.n!=='__photos__') txt+=`[${floorName(fl)}] ${s.name}: ${m}\n`; }); });
+  const issList=state.issues.filter(i=>i.date===sel);
+  if(issList.length){ txt+=`\n이상 사항\n`; issList.forEach((i,idx)=>{ txt+=`${idx+1}. [${i.level==='urgent'?'긴급':'주의'}] ${i.facility} (${floorName(i.floor)}) ${i.time} — ${i.memo}\n`; }); }
+  const w=window.open('','_blank','width=800,height=600');
+  w.document.write('<!DOCTYPE html><html><head><title>점검보고서 '+sel+'</title><style>body{font-family:sans-serif;padding:24px;font-size:13px}h2{color:#1a56db}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px}</style></head><body><h2>래미안 원베일리 지하주차장 점검보고서</h2><p>'+sel+'</p><pre style="white-space:pre-wrap">'+txt+'</pre></body></html>');
+  w.document.close(); w.print();
+}
+function copyReport(){
+  const sel=document.getElementById('rpt-date')?.value||today();
+  let txt=`[래미안 원베일리 점검보고] ${sel}\n\n`;
+  Object.entries(ROUTES).forEach(([fl,steps])=>{ steps.forEach(s=>{ const m=state.stepMemos[fl]&&state.stepMemos[fl][s.n]&&state.stepMemos[fl][s.n][sel]; if(m) txt+=`• [${floorName(fl)}] ${s.name}: ${m}\n`; }); });
+  const issList=state.issues.filter(i=>i.date===sel);
+  if(issList.length){ txt+=`\n⚠ 이상\n`; issList.forEach((i,k)=>{ txt+=`${k+1}. [${i.level==='urgent'?'긴급':'주의'}] ${i.facility}(${floorName(i.floor)}) ${i.time}\n   ${i.memo}\n`; }); }
+  navigator.clipboard.writeText(txt).then(()=>showToast('보고서 복사됨 ✓')).catch(()=>alert(txt));
+}
+
+// ═══════════════════════════════════════
+// 달력
+// ═══════════════════════════════════════
+function renderCalendar(){
+  if(!calYear){ const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth(); }
+  const mm=String(calMonth+1).padStart(2,'0');
+  const prefix=`${calYear}-${mm}`;
+  const daysHaveMemo=new Set(), daysHaveIssue=new Set();
+  Object.values(state.stepMemos).forEach(ns=>{ Object.values(ns).forEach(dates=>{ Object.keys(dates).filter(d=>d!=='__photos__').forEach(d=>{ if(d.startsWith(prefix)) daysHaveMemo.add(+d.slice(8,10)); }); }); });
+  state.issues.forEach(i=>{ if(i.date&&i.date.startsWith(prefix)) daysHaveIssue.add(+i.date.slice(8,10)); });
+
+  const mname=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-month-label').textContent=`${calYear}년 ${mname[calMonth]}`;
+  const now=new Date(); const tD=now.getDate(),tM=now.getMonth(),tY=now.getFullYear();
+  const first=new Date(calYear,calMonth,1).getDay();
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  let html=['일','월','화','수','목','금','토'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const hM=daysHaveMemo.has(d), hI=daysHaveIssue.has(d);
+    const isToday=d===tD&&calMonth===tM&&calYear===tY;
+    let cls='cal-day';
+    if(hM&&hI) cls+=' has-both'; else if(hM) cls+=' has-memo'; else if(hI) cls+=' has-issue';
+    if(isToday) cls+=' today';
+    const ds=`${calYear}-${mm}-${String(d).padStart(2,'0')}`;
+    html+=`<div class="${cls}" onclick="calClick('${ds}')">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+}
+function calPrev(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function calClick(ds){ setTab('report'); setTimeout(()=>{ document.getElementById('rpt-date').value=ds; buildReport(); },50); }
+
+// ═══════════════════════════════════════
+// 내보내기 / 불러오기
+// ═══════════════════════════════════════
+function exportData(){
+  const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`지하주차장_점검기록_${today()}.json`; a.click();
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const imp=JSON.parse(ev.target.result);
+      if(!confirm(`${file.name} 불러오기\n기존 데이터와 병합됩니다.`)) return;
+      const existIds=new Set(state.issues.map(i=>i.id));
+      (imp.issues||[]).forEach(i=>{ if(!existIds.has(i.id)) state.issues.push(i); });
+      Object.entries(imp.stepMemos||{}).forEach(([fl,ns])=>{
+        if(!state.stepMemos[fl]) state.stepMemos[fl]={};
+        Object.entries(ns).forEach(([n,dates])=>{
+          if(!state.stepMemos[fl][n]) state.stepMemos[fl][n]={};
+          Object.assign(state.stepMemos[fl][n], dates);
+        });
+      });
+      Object.entries(imp.checked||{}).forEach(([fl,obj])=>{
+        if(!state.checked[fl]) state.checked[fl]={};
+        Object.assign(state.checked[fl], obj);
+      });
+      saveState(); renderRoute(); updateIssueBadge(); showToast('불러오기 완료 ✓');
+    }catch(err){ alert('파일 형식이 올바르지 않습니다.'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+// ═══════════════════════════════════════
+// 사진 압축
+// ═══════════════════════════════════════
+function compressPhoto(file, cb){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=900; let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.62));
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function viewPhoto(src){
+  document.getElementById('photo-viewer-img').src=src;
+  document.getElementById('photo-viewer').classList.add('show');
+}
+
+// ═══════════════════════════════════════
+// 토스트
+// ═══════════════════════════════════════
+function showToast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  Object.assign(t.style,{position:'fixed',bottom:'80px',left:'50%',transform:'translateX(-50%)',
+    background:'rgba(0,0,0,.75)',color:'#fff',padding:'8px 18px',borderRadius:'99px',
+    fontSize:'13px',fontWeight:'600',zIndex:'999',pointerEvents:'none',whiteSpace:'nowrap'});
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),1800);
+}
+
+// ═══════════════════════════════════════
+// 초기화
+// ═══════════════════════════════════════
+window.addEventListener('load',()=>{
+  loadState();
+  updateIssueBadge();
+  updateStorageInfo();
+  // 탭 초기화
+  setTab('route');
+  document.getElementById('rpt-date').value=today();
+  // sub-hdr 위치 보정
+  document.getElementById('sub-hdr').style.display='flex';
+});
+
+// 커스텀 다이얼로그
+var dlgCb=null;
+function showConfirm(msg,danger){
+  return new Promise(function(resolve){
+    document.getElementById('dlg-msg').textContent=msg;
+    document.getElementById('dlg-ok').style.background=danger?'#dc2626':'#1a56db';
+    document.getElementById('dlg-cancel').style.display='';
+    document.getElementById('dlg-bg').style.display='flex';
+    dlgCb=resolve;
+  });
+}
+function showAlert(msg){
+  return new Promise(function(resolve){
+    document.getElementById('dlg-msg').textContent=msg;
+    document.getElementById('dlg-ok').style.background='#1a56db';
+    document.getElementById('dlg-cancel').style.display='none';
+    document.getElementById('dlg-bg').style.display='flex';
+    dlgCb=resolve;
+  });
+}
+function dlgAnswer(v){document.getElementById('dlg-bg').style.display='none';if(dlgCb){dlgCb(v);dlgCb=null;}}
+</script>
+
+<!-- 커스텀 다이얼로그 -->
+<div id="dlg-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;display:none;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:300px;text-align:center">
+    <div id="dlg-msg" style="font-size:15px;line-height:1.7;margin-bottom:20px;white-space:pre-line"></div>
+    <div style="display:flex;gap:10px">
+      <button id="dlg-cancel" onclick="dlgAnswer(false)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#f0f2f5;color:#666;font-size:15px;font-weight:600;cursor:pointer">취소</button>
+      <button id="dlg-ok" onclick="dlgAnswer(true)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#1a56db;color:#fff;font-size:15px;font-weight:600;cursor:pointer">확인</button>
+    </div>
+  </div>
+</div>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}</script>
+</body>
+</html>
