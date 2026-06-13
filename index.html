@@ -192,7 +192,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;back
 <!-- 헤더 -->
 <div id="hdr">
   <div id="hdr-top">
-    <div id="hdr-title">🏢 지하주차장</div>
+    <div id="hdr-title">🏢 아파트 지하주차장 점검</div>
     <div id="hdr-meta">
       <div id="hdr-date"></div>
       <div id="hdr-storage" style="color:rgba(255,255,255,.7)"></div>
@@ -678,17 +678,17 @@ function buildReport(){
 }
 function printReport(){
   const sel=document.getElementById('rpt-date')?.value||today();
-  let txt=`래미안 원베일리 지하주차장 점검보고서\n일자: ${sel}\n\n`;
+  let txt=`아파트 지하주차장 점검보고서\n일자: ${sel}\n\n`;
   Object.entries(ROUTES).forEach(([fl,steps])=>{ steps.forEach(s=>{ const m=state.stepMemos[fl]&&state.stepMemos[fl][s.n]&&state.stepMemos[fl][s.n][sel]; if(m&&s.n!=='__photos__') txt+=`[${floorName(fl)}] ${s.name}: ${m}\n`; }); });
   const issList=state.issues.filter(i=>i.date===sel);
   if(issList.length){ txt+=`\n이상 사항\n`; issList.forEach((i,idx)=>{ txt+=`${idx+1}. [${i.level==='urgent'?'긴급':'주의'}] ${i.facility} (${floorName(i.floor)}) ${i.time} — ${i.memo}\n`; }); }
   const w=window.open('','_blank','width=800,height=600');
-  w.document.write('<!DOCTYPE html><html><head><title>점검보고서 '+sel+'</title><style>body{font-family:sans-serif;padding:24px;font-size:13px}h2{color:#1a56db}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px}</style></head><body><h2>래미안 원베일리 지하주차장 점검보고서</h2><p>'+sel+'</p><pre style="white-space:pre-wrap">'+txt+'</pre></body></html>');
+  w.document.write('<!DOCTYPE html><html><head><title>점검보고서 '+sel+'</title><style>body{font-family:sans-serif;padding:24px;font-size:13px}h2{color:#1a56db}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px}</style></head><body><h2>아파트 지하주차장 점검보고서</h2><p>'+sel+'</p><pre style="white-space:pre-wrap">'+txt+'</pre></body></html>');
   w.document.close(); w.print();
 }
 function copyReport(){
   const sel=document.getElementById('rpt-date')?.value||today();
-  let txt=`[래미안 원베일리 점검보고] ${sel}\n\n`;
+  let txt=`[아파트 지하주차장 점검보고] ${sel}\n\n`;
   Object.entries(ROUTES).forEach(([fl,steps])=>{ steps.forEach(s=>{ const m=state.stepMemos[fl]&&state.stepMemos[fl][s.n]&&state.stepMemos[fl][s.n][sel]; if(m) txt+=`• [${floorName(fl)}] ${s.name}: ${m}\n`; }); });
   const issList=state.issues.filter(i=>i.date===sel);
   if(issList.length){ txt+=`\n⚠ 이상\n`; issList.forEach((i,k)=>{ txt+=`${k+1}. [${i.level==='urgent'?'긴급':'주의'}] ${i.facility}(${floorName(i.floor)}) ${i.time}\n   ${i.memo}\n`; }); }
