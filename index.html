@@ -641,20 +641,7 @@ function printReport(){
   const issList=state.issues.filter(i=>i.date===sel);
   if(issList.length){ txt+=`\n이상 사항\n`; issList.forEach((i,idx)=>{ txt+=`${idx+1}. [${i.level==='urgent'?'긴급':'주의'}] ${i.facility} (${floorName(i.floor)}) ${i.time} — ${i.memo}\n`; }); }
   const w=window.open('','_blank','width=800,height=600');
-  w.document.write(`<!DOCTYPE html><html><head><title>점검보고서 ${sel}</title><style>body{font-family:sans-serif;padding:24px;font-size:13px}h2{color:#1a56db}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px}</style></head><body><h2>래미안 원베일리 지하주차장 점검보고서</h2><p>${sel}</p><pre style="white-space:pre-wrap">${txt}</pre>
-<!-- 커스텀 다이얼로그 -->
-<div id="dlg-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;display:none;align-items:center;justify-content:center;padding:24px">
-  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:300px;text-align:center">
-    <div id="dlg-msg" style="font-size:15px;line-height:1.7;margin-bottom:20px;white-space:pre-line"></div>
-    <div style="display:flex;gap:10px">
-      <button id="dlg-cancel" onclick="dlgAnswer(false)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#f0f2f5;color:#666;font-size:15px;font-weight:600;cursor:pointer">취소</button>
-      <button id="dlg-ok" onclick="dlgAnswer(true)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#1a56db;color:#fff;font-size:15px;font-weight:600;cursor:pointer">확인</button>
-    </div>
-  </div>
-</div>
-
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}</script>
-</body></html>`);
+  w.document.write('<!DOCTYPE html><html><head><title>점검보고서 '+sel+'</title><style>body{font-family:sans-serif;padding:24px;font-size:13px}h2{color:#1a56db}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px}</style></head><body><h2>래미안 원베일리 지하주차장 점검보고서</h2><p>'+sel+'</p><pre style="white-space:pre-wrap">'+txt+'</pre></body></html>');
   w.document.close(); w.print();
 }
 function copyReport(){
@@ -805,5 +792,17 @@ function showAlert(msg){
 }
 function dlgAnswer(v){document.getElementById('dlg-bg').style.display='none';if(dlgCb){dlgCb(v);dlgCb=null;}}
 </script>
+
+<!-- 커스텀 다이얼로그 -->
+<div id="dlg-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;display:none;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:300px;text-align:center">
+    <div id="dlg-msg" style="font-size:15px;line-height:1.7;margin-bottom:20px;white-space:pre-line"></div>
+    <div style="display:flex;gap:10px">
+      <button id="dlg-cancel" onclick="dlgAnswer(false)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#f0f2f5;color:#666;font-size:15px;font-weight:600;cursor:pointer">취소</button>
+      <button id="dlg-ok" onclick="dlgAnswer(true)" style="flex:1;padding:12px;border-radius:12px;border:none;background:#1a56db;color:#fff;font-size:15px;font-weight:600;cursor:pointer">확인</button>
+    </div>
+  </div>
+</div>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}</script>
 </body>
 </html>
